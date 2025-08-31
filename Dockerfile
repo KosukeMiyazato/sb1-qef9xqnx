@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Build the application
 FROM base AS builder
@@ -17,6 +17,13 @@ COPY . .
 
 # Build the Vue application
 RUN npm run build
+
+# Production dependencies only
+FROM base AS prod-deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
 
 # Production image with nginx
 FROM nginx:alpine AS runner
