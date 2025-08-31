@@ -1,43 +1,27 @@
-# Multi-stage build for Vue.js application
-FROM node:18-alpine AS base
-
-# Install dependencies
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# Build stage
+FROM node:18-alpine AS builder
 WORKDIR /app
 
+# Install deps (include devDeps for build)
 COPY package*.json ./
 RUN npm ci
 
-# Build the application
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source and build
 COPY . .
-
-# Build the Vue application
 RUN npm run build
 
-# Production dependencies only
-FROM base AS prod-deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Production image with nginx
+# Production stage with nginx
 FROM nginx:alpine AS runner
 WORKDIR /usr/share/nginx/html
 
-# Remove default nginx static assets
+# Remove default nginx assets
 RUN rm -rf ./*
 
-# Copy built application
+# Copy built assets
 COPY --from=builder /app/dist .
 
-# Copy nginx configuration
+# Copy nginx config if needed
 COPY nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
